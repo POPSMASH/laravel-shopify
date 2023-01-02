@@ -49,7 +49,8 @@ trait BillingController
         // Get the plan URL for redirect
         $url = $getPlanUrl(
             $shop->getId(),
-            NullablePlanId::fromNative($plan)
+            NullablePlanId::fromNative($plan),
+            $request->host
         );
 
         // Do a fullpage redirect
@@ -77,24 +78,30 @@ trait BillingController
     ): RedirectResponse {
         // Get the shop
         $shop = $shopQuery->getByDomain(ShopDomain::fromNative($request->query('shop')));
+
+        // Get the host
+        $host = $request->host ? $request->host : base64_encode($shop->getDomain()->toNative().'/admin');
+
         if (!$request->has('charge_id')) {
             return Redirect::route(Util::getShopifyConfig('route_names.home'), [
+                'host' => $host,
                 'shop' => $shop->getDomain()->toNative(),
-                'host' => base64_encode($shop->getDomain()->toNative().'/admin'),
             ]);
         }
+
         // Activate the plan and save
         $result = $activatePlan(
             $shop->getId(),
             PlanId::fromNative($plan),
-            ChargeReference::fromNative((int) $request->query('charge_id'))
+            ChargeReference::fromNative((int) $request->query('charge_id')),
+            $host
         );
 
         // Go to homepage of app
         return Redirect::route(Util::getShopifyConfig('route_names.home'), array_merge([
             'shop' => $shop->getDomain()->toNative(),
-        ], Util::useNativeAppBridge() ? [] : [
-            'host' => base64_encode($shop->getDomain()->toNative().'/admin'),
+        ], Util::useNativeAppBridge() ? ['host' => $host] : [
+            'host' => $host,
             'billing' => $result ? 'success' : 'failure',
         ]))->with(
             $result ? 'success' : 'failure',

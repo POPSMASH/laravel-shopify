@@ -12,7 +12,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Str;
 use Osiset\ShopifyApp\Contracts\ApiHelper as IApiHelper;
-use Osiset\ShopifyApp\Contracts\Objects\Values\ShopDomain as ShopDomainValue;
 use Osiset\ShopifyApp\Contracts\Queries\Shop as IShopQuery;
 use Osiset\ShopifyApp\Contracts\ShopModel;
 use Osiset\ShopifyApp\Exceptions\HttpException;
@@ -161,7 +160,6 @@ class VerifyShopify
             // AJAX, return HTTP exception
             throw new HttpException(SessionToken::EXCEPTION_INVALID, Response::HTTP_BAD_REQUEST);
         }
-
         return $this->tokenRedirect($request);
     }
 
@@ -205,7 +203,7 @@ class VerifyShopify
             throw new HttpException('Shop is not installed or missing data.', Response::HTTP_FORBIDDEN);
         }
 
-        return $this->installRedirect(ShopDomain::fromRequest($request));
+        return $this->installRedirect($request);
     }
 
     /**
@@ -299,6 +297,7 @@ class VerifyShopify
         return Redirect::route(
             Util::getShopifyConfig('route_names.authenticate.token'),
             [
+                'host' => $request->host ?? $request->host,
                 'shop' => ShopDomain::fromRequest($request)->toNative(),
                 'target' => $target,
             ]
@@ -308,15 +307,18 @@ class VerifyShopify
     /**
      * Redirect to install route.
      *
-     * @param ShopDomainValue $shopDomain The shop domain.
+     * @param Request $request The request object.
      *
      * @return RedirectResponse
      */
-    protected function installRedirect(ShopDomainValue $shopDomain): RedirectResponse
+    protected function installRedirect(Request $request): RedirectResponse
     {
         return Redirect::route(
             Util::getShopifyConfig('route_names.authenticate'),
-            ['shop' => $shopDomain->toNative()]
+            [
+                'host' => $request->host ?? $request->host,
+                'shop' => ShopDomain::fromRequest($request)->toNative(),
+            ]
         );
     }
 
